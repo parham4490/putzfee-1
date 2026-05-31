@@ -76,6 +76,18 @@ async def create_order(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=f"Time slot {requested_time} is already booked",
                 )
+            # Also check appointments table
+            appointment_conflict = await database.fetch_one(
+                appointments.select().where(
+                    (appointments.c.start_at < requested_time + timedelta(hours=1)) &
+                    (appointments.c.end_at > requested_time)
+                )
+            )
+            if appointment_conflict:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Time slot {requested_time} is already booked",
+                )
 
     requires_car = any(r["requires_car"] for r in valid_rows)
     if requires_car and body.car_id is None:
@@ -284,4 +296,3 @@ async def submit_review(
         )
     )
     return Message(message="ok")
- 
