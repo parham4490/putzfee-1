@@ -79,6 +79,9 @@ async def create_order(
             latitude=body.latitude,
             longitude=body.longitude,
             address_text=body.address_text,
+            house_number=body.house_number,
+            visit1_datetime=body.visit1_datetime,
+            visit2_datetime=body.visit2_datetime,
             notes=body.notes,
             payment_type=body.payment_type,
             promotion_id=body.promotion_id,
@@ -233,6 +236,6 @@ async def submit_review(
             user_id=user["id"],
             rating=int(body.rating),
             comment=body.comment,
-        ) 
+        )
     )
     return Message(message="ok")
