@@ -344,3 +344,4 @@ async def list_available_slots(
         current += slot_duration
 
     return [SlotOut(**slot) for slot in available_slots]
+ 
