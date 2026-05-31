@@ -180,6 +180,9 @@ class RequestCreateIn(BaseModel):
     latitude: Optional[Decimal] = None
     longitude: Optional[Decimal] = None
     address_text: Optional[str] = Field(default=None, max_length=500)
+    house_number: Optional[str] = Field(default=None, max_length=40)
+    visit1_datetime: Optional[datetime] = None
+    visit2_datetime: Optional[datetime] = None
     notes: Optional[str] = None
     promotion_id: Optional[int] = None
     payment_type: str = "cash"
@@ -202,6 +205,9 @@ class RequestOut(BaseModel):
     latitude: Optional[Decimal] = None
     longitude: Optional[Decimal] = None
     address_text: Optional[str] = None
+    house_number: Optional[str] = None
+    visit1_datetime: Optional[datetime] = None
+    visit2_datetime: Optional[datetime] = None
     notes: Optional[str] = None
     total_price: Optional[Decimal] = None
     exec_duration_minutes: Optional[int] = None
