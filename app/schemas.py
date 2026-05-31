@@ -183,6 +183,7 @@ class RequestCreateIn(BaseModel):
     house_number: Optional[str] = Field(default=None, max_length=40)
     visit1_datetime: Optional[datetime] = None
     visit2_datetime: Optional[datetime] = None
+    base_price: Optional[Decimal] = None
     notes: Optional[str] = None
     promotion_id: Optional[int] = None
     payment_type: str = "cash"
