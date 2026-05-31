@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -53,6 +53,29 @@ async def create_order(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"invalid service keys: {sorted(missing)}",
         )
+    
+    # Check for time conflicts with existing slots
+    requested_times = []
+    if body.visit1_datetime:
+        requested_times.append(body.visit1_datetime)
+    if body.visit2_datetime:
+        requested_times.append(body.visit2_datetime)
+    
+    if requested_times:
+        for requested_time in requested_times:
+            # Check if there's any existing slot that overlaps with the requested time
+            conflict = await database.fetch_one(
+                schedule_slots.select().where(
+                    (schedule_slots.c.start_at < requested_time + timedelta(hours=1)) &
+                    (schedule_slots.c.end_at > requested_time) &
+                    (schedule_slots.c.status.in_(["REQUESTED", "PROPOSED", "CONFIRMED"]))
+                )
+            )
+            if conflict:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Time slot {requested_time} is already booked",
+                )
 
     requires_car = any(r["requires_car"] for r in valid_rows)
     if requires_car and body.car_id is None:
@@ -82,11 +105,33 @@ async def create_order(
             house_number=body.house_number,
             visit1_datetime=body.visit1_datetime,
             visit2_datetime=body.visit2_datetime,
+            total_price=body.base_price,
             notes=body.notes,
             payment_type=body.payment_type,
             promotion_id=body.promotion_id,
         )
     )
+    
+    # Add requested times to schedule_slots to prevent conflicts
+    if body.visit1_datetime:
+        await database.execute(
+            schedule_slots.insert().values(
+                request_id=new_id,
+                start_at=body.visit1_datetime,
+                end_at=body.visit1_datetime + timedelta(hours=1),
+                status="REQUESTED",
+            )
+        )
+    if body.visit2_datetime:
+        await database.execute(
+            schedule_slots.insert().values(
+                request_id=new_id,
+                start_at=body.visit2_datetime,
+                end_at=body.visit2_datetime + timedelta(hours=1),
+                status="REQUESTED",
+            )
+        )
+    
     row = await database.fetch_one(requests.select().where(requests.c.id == new_id))
 
     # Notify admins.
