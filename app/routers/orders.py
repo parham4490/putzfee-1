@@ -233,6 +233,6 @@ async def submit_review(
             user_id=user["id"],
             rating=int(body.rating),
             comment=body.comment,
-        )
+        ) 
     )
     return Message(message="ok")
