@@ -56,13 +56,12 @@ async def create_order(
         )
     
     # Parse datetime strings without timezone conversion
-    s = get_settings()
     visit1_datetime = None
     visit2_datetime = None
     if body.visit1_datetime:
-        visit1_datetime = datetime.fromisoformat(body.visit1_datetime).replace(tzinfo=s.tz)
+        visit1_datetime = datetime.fromisoformat(body.visit1_datetime)
     if body.visit2_datetime:
-        visit2_datetime = datetime.fromisoformat(body.visit2_datetime).replace(tzinfo=s.tz)
+        visit2_datetime = datetime.fromisoformat(body.visit2_datetime)
     
     # Check for time conflicts with existing slots
     requested_times = []
