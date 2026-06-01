@@ -33,6 +33,57 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 # ---------------------------------------------------------------------
+# Get booked slots for a specific date
+# ---------------------------------------------------------------------
+@router.get("/booked-slots")
+async def get_booked_slots(
+    date: str,  # Format: YYYY-MM-DD
+    user=Depends(current_user),
+) -> dict:
+    """Get list of booked hours for a specific date."""
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Use YYYY-MM-DD",
+        )
+    
+    # Get start and end of the target date
+    start_of_day = datetime.combine(target_date, datetime.min.time())
+    end_of_day = datetime.combine(target_date, datetime.max.time())
+    
+    # Get booked slots from schedule_slots
+    booked_slots = await database.fetch_all(
+        schedule_slots.select().where(
+            (schedule_slots.c.start_at >= start_of_day) &
+            (schedule_slots.c.end_at <= end_of_day) &
+            (schedule_slots.c.status.in_(["REQUESTED", "PROPOSED", "CONFIRMED"]))
+        )
+    )
+    
+    # Get booked slots from appointments
+    booked_appointments = await database.fetch_all(
+        appointments.select().where(
+            (appointments.c.start_at >= start_of_day) &
+            (appointments.c.end_at <= end_of_day)
+        )
+    )
+    
+    # Extract booked hours
+    booked_hours = set()
+    for slot in booked_slots:
+        hour = slot["start_at"].hour
+        booked_hours.add(hour)
+    
+    for appointment in booked_appointments:
+        hour = appointment["start_at"].hour
+        booked_hours.add(hour)
+    
+    return {"booked_hours": sorted(booked_hours)}
+
+
+# ---------------------------------------------------------------------
 # Check for active order by service key
 # ---------------------------------------------------------------------
 @router.get("/check-active")
@@ -97,41 +148,6 @@ async def create_order(
         visit1_datetime = datetime.fromisoformat(body.visit1_datetime)
     if body.visit2_datetime:
         visit2_datetime = datetime.fromisoformat(body.visit2_datetime)
-    
-    # Check for time conflicts with existing slots
-    requested_times = []
-    if visit1_datetime:
-        requested_times.append(visit1_datetime)
-    if visit2_datetime:
-        requested_times.append(visit2_datetime)
-    
-    if requested_times:
-        for requested_time in requested_times:
-            # Check if there's any existing slot that overlaps with the requested time
-            conflict = await database.fetch_one(
-                schedule_slots.select().where(
-                    (schedule_slots.c.start_at < requested_time + timedelta(hours=1)) &
-                    (schedule_slots.c.end_at > requested_time) &
-                    (schedule_slots.c.status.in_(["REQUESTED", "PROPOSED", "CONFIRMED"]))
-                )
-            )
-            if conflict:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Time slot {requested_time} is already booked",
-                )
-            # Also check appointments table
-            appointment_conflict = await database.fetch_one(
-                appointments.select().where(
-                    (appointments.c.start_at < requested_time + timedelta(hours=1)) &
-                    (appointments.c.end_at > requested_time)
-                )
-            )
-            if appointment_conflict:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Time slot {requested_time} is already booked",
-                )
 
     requires_car = any(r["requires_car"] for r in valid_rows)
     if requires_car and body.car_id is None:
