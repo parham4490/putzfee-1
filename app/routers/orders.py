@@ -311,6 +311,9 @@ async def cancel_order(
         await database.execute(
             appointments.delete().where(appointments.c.request_id == request_id)
         )
+        await database.execute(
+            schedule_slots.delete().where(schedule_slots.c.request_id == request_id)
+        )
     row = await database.fetch_one(
         requests.select().where(requests.c.id == request_id)
     )
