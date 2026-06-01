@@ -181,8 +181,10 @@ class RequestCreateIn(BaseModel):
     longitude: Optional[Decimal] = None
     address_text: Optional[str] = Field(default=None, max_length=500)
     house_number: Optional[str] = Field(default=None, max_length=40)
-    visit1_datetime: Optional[datetime] = None
-    visit2_datetime: Optional[datetime] = None
+    visit1_date: Optional[str] = None
+    visit1_hour: Optional[int] = None
+    visit2_date: Optional[str] = None
+    visit2_hour: Optional[int] = None
     base_price: Optional[Decimal] = None
     notes: Optional[str] = None
     promotion_id: Optional[int] = None
