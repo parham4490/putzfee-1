@@ -52,19 +52,16 @@ async def check_active_order(
         "IN_PROGRESS",
     ]
     
+    # Query for active order that contains the specific service key
     row = await database.fetch_one(
         requests.select().where(
             (requests.c.user_id == user['id']) &
-            (requests.c.status.in_(active_statuses))
+            (requests.c.status.in_(active_statuses)) &
+            (requests.c.service_keys.contains([service_key]))
         )
     )
     
     if row is None:
-        return {"has_active_order": False, "order_id": None}
-    
-    # Check if the order contains the service key
-    service_keys = row["service_keys"] or []
-    if service_key not in service_keys:
         return {"has_active_order": False, "order_id": None}
     
     return {"has_active_order": True, "order_id": row["id"]}
