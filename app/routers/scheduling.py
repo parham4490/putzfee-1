@@ -17,7 +17,7 @@ The ``appointments`` table additionally has a UNIQUE constraint on
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List
 
 from asyncpg import UniqueViolationError
@@ -36,7 +36,6 @@ from ..deps import current_admin, current_locale, current_user
 from ..i18n import Locale, t
 from ..push import push_to_admins, push_to_user
 from ..schemas import ConfirmSlotIn, ProposeSlotsIn, SlotOut
-from ..time_utils import to_utc
 
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 
@@ -67,15 +66,14 @@ async def propose_slots(
     seen: set[datetime] = set()
     normalised: list[datetime] = []
     for raw in body.slots:
-        start = to_utc(raw)
+        start = raw
         if start in seen:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=t("slot.duplicate", locale),
             )
         seen.add(start)
-        local = start.astimezone(s.tz)
-        if not (s.WORK_START_HOUR <= local.hour < s.WORK_END_HOUR):
+        if not (s.WORK_START_HOUR <= start.hour < s.WORK_END_HOUR):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=t("slot.outside_work_hours", locale),
@@ -133,7 +131,7 @@ async def propose_slots(
             .where(requests.c.id == request_id)
             .values(
                 status="AWAITING_USER_CONFIRM",
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(),
             )
         )
 
@@ -231,7 +229,7 @@ async def confirm_slot(
             .where(requests.c.id == request_id)
             .values(
                 status="TIME_CONFIRMED",
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(),
             )
         )
 
@@ -258,19 +256,19 @@ async def list_taken_slots(
     """Return confirmed appointments in the [from_date, to_date] range.
 
     The admin UI uses this to grey out unavailable slots when proposing.
-    Dates are ISO ``YYYY-MM-DD`` interpreted in the business timezone.
+    Dates are ISO ``YYYY-MM-DD``.
     """
     from datetime import date as _date
 
     s = get_settings()
     d_from = _date.fromisoformat(from_date)
     d_to = _date.fromisoformat(to_date)
-    start_local = datetime.combine(d_from, datetime.min.time(), tzinfo=s.tz)
-    end_local = datetime.combine(d_to, datetime.max.time(), tzinfo=s.tz)
+    start_local = datetime.combine(d_from, datetime.min.time())
+    end_local = datetime.combine(d_to, datetime.max.time())
     rows = await database.fetch_all(
         appointments.select()
-        .where(appointments.c.start_at >= start_local.astimezone(timezone.utc))
-        .where(appointments.c.start_at <= end_local.astimezone(timezone.utc))
+        .where(appointments.c.start_at >= start_local)
+        .where(appointments.c.start_at <= end_local)
         .order_by(appointments.c.start_at)
     )
     return [
@@ -296,20 +294,19 @@ async def list_available_slots(
 ) -> List[SlotOut]:
     """Return available time slots for a specific date.
 
-    Returns all slots within working hours (8:00 - 19:00 UTC).
+    Returns all slots within working hours (8:00 - 19:00).
     Date is ISO ``YYYY-MM-DD``.
-    Slots are returned in UTC and should be converted to local time on the client.
     """
     from datetime import date as _date
 
     s = get_settings()
     d = _date.fromisoformat(date)
 
-    # Create start and end of day in UTC
-    start_of_day = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
-    end_of_day = datetime.combine(d, datetime.max.time(), tzinfo=timezone.utc)
+    # Create start and end of day
+    start_of_day = datetime.combine(d, datetime.min.time())
+    end_of_day = datetime.combine(d, datetime.max.time())
 
-    # Get all taken slots for this date (in UTC)
+    # Get all taken slots for this date
     taken_rows = await database.fetch_all(
         appointments.select()
         .where(appointments.c.start_at >= start_of_day)
@@ -317,29 +314,28 @@ async def list_available_slots(
     )
     taken_starts = {r["start_at"] for r in taken_rows}
 
-    # Generate all possible slots within working hours (8:00 - 19:00 local time)
+    # Generate all possible slots within working hours (8:00 - 19:00)
     slot_duration = timedelta(hours=s.SLOT_DURATION_HOURS)
     available_slots: list[dict] = []
 
-    # Start at 8:00 AM in server timezone
-    current = datetime.combine(d, datetime.min.time(), tzinfo=s.tz).replace(
+    # Start at 8:00 AM
+    current = datetime.combine(d, datetime.min.time()).replace(
         hour=s.WORK_START_HOUR
     )
-    # End at 7:00 PM (19:00) in server timezone
-    end_time = datetime.combine(d, datetime.min.time(), tzinfo=s.tz).replace(
+    # End at 7:00 PM (19:00)
+    end_time = datetime.combine(d, datetime.min.time()).replace(
         hour=s.WORK_END_HOUR
     )
 
     while current + slot_duration <= end_time:
-        current_utc = current.astimezone(timezone.utc)
-        if current_utc not in taken_starts:
+        if current not in taken_starts:
             available_slots.append({
                 "id": 0,  # Placeholder ID for available slots
                 "request_id": 0,
-                "start_at": current_utc,
-                "end_at": (current + slot_duration).astimezone(timezone.utc),
+                "start_at": current,
+                "end_at": current + slot_duration,
                 "status": "AVAILABLE",
-                "created_at": datetime.now(timezone.utc),
+                "created_at": datetime.now(),
             })
         current += slot_duration
 
