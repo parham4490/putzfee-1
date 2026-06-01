@@ -13,7 +13,10 @@ import sqlalchemy as sa
 from databases import Database
 from sqlalchemy.dialects import postgresql as pg
 
-from .config import get_settings
+try:
+    from .config import get_settings
+except ImportError:
+    from config import get_settings
 
 _settings = get_settings()
 
@@ -185,8 +188,8 @@ requests = sa.Table(
     sa.Column("longitude", sa.Numeric(10, 7), nullable=True),
     sa.Column("address_text", sa.String(500), nullable=True),
     sa.Column("house_number", sa.String(40), nullable=True),
-    sa.Column("visit1_datetime", sa.DateTime(timezone=True), nullable=True),
-    sa.Column("visit2_datetime", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("visit1_datetime", sa.DateTime(timezone=False), nullable=True),
+    sa.Column("visit2_datetime", sa.DateTime(timezone=False), nullable=True),
     sa.Column("notes", sa.Text, nullable=True),
     sa.Column("total_price", sa.Numeric(12, 2), nullable=True),
     sa.Column("exec_duration_minutes", sa.Integer, nullable=True),
@@ -225,8 +228,8 @@ schedule_slots = sa.Table(
         nullable=False,
         index=True,
     ),
-    sa.Column("start_at", sa.DateTime(timezone=True), nullable=False, index=True),
-    sa.Column("end_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("start_at", sa.DateTime(timezone=False), nullable=False, index=True),
+    sa.Column("end_at", sa.DateTime(timezone=False), nullable=False),
     sa.Column(
         "status",
         sa.String(16),
@@ -255,8 +258,8 @@ appointments = sa.Table(
         nullable=False,
         unique=True,
     ),
-    sa.Column("start_at", sa.DateTime(timezone=True), nullable=False, unique=True),
-    sa.Column("end_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("start_at", sa.DateTime(timezone=False), nullable=False, unique=True),
+    sa.Column("end_at", sa.DateTime(timezone=False), nullable=False),
     sa.Column(
         "created_at",
         sa.DateTime(timezone=True),
