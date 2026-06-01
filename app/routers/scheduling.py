@@ -317,31 +317,30 @@ async def list_available_slots(
     )
     taken_starts = {r["start_at"] for r in taken_rows}
 
-    # Generate all possible slots within working hours (8:00 - 19:00 UTC)
+    # Generate all possible slots within working hours (8:00 - 19:00 local time)
     slot_duration = timedelta(hours=s.SLOT_DURATION_HOURS)
     available_slots: list[dict] = []
 
-    # Start at 8:00 AM UTC
-    current = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc).replace(
+    # Start at 8:00 AM in server timezone
+    current = datetime.combine(d, datetime.min.time(), tzinfo=s.tz).replace(
         hour=s.WORK_START_HOUR
     )
-    # End at 7:00 PM (19:00) UTC
-    end_time = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc).replace(
+    # End at 7:00 PM (19:00) in server timezone
+    end_time = datetime.combine(d, datetime.min.time(), tzinfo=s.tz).replace(
         hour=s.WORK_END_HOUR
     )
 
     while current + slot_duration <= end_time:
-        current_utc = current
+        current_utc = current.astimezone(timezone.utc)
         if current_utc not in taken_starts:
             available_slots.append({
                 "id": 0,  # Placeholder ID for available slots
                 "request_id": 0,
                 "start_at": current_utc,
-                "end_at": (current + slot_duration),
+                "end_at": (current + slot_duration).astimezone(timezone.utc),
                 "status": "AVAILABLE",
                 "created_at": datetime.now(timezone.utc),
             })
         current += slot_duration
 
     return [SlotOut(**slot) for slot in available_slots]
- 
