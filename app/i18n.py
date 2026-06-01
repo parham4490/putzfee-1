@@ -47,9 +47,9 @@ _MESSAGES: Dict[str, Dict[Locale, str]] = {
         "de": "Ungültiges Token.",
     },
     "auth.token_expired": {
-        "fa": "توکن منقضی شده است.",
-        "en": "Token expired.",
-        "de": "Token abgelaufen.",
+        "fa": "لطفا مجدد وارد شوید.",
+        "en": "Please log in again.",
+        "de": "Bitte melden Sie sich erneut an.",
     },
 
     # Orders
@@ -135,9 +135,9 @@ _MESSAGES: Dict[str, Dict[Locale, str]] = {
 
     # Notifications
     "notify.new_order": {
-        "fa": "درخواست جدید",
-        "en": "New order",
-        "de": "Neue Bestellung",
+        "fa": "یک سفارش جدید ثبت شد.",
+        "en": "A new order has been created.",
+        "de": "Eine neue Bestellung wurde erstellt.",
     },
     "notify.times_proposed": {
         "fa": "زمان‌های پیشنهادی",
