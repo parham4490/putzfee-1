@@ -33,6 +33,44 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 # ---------------------------------------------------------------------
+# Check for active order by service key
+# ---------------------------------------------------------------------
+@router.get("/check-active")
+async def check_active_order(
+    service_key: str,
+    user=Depends(current_user),
+) -> dict:
+    """Check if user has an active order with the given service key."""
+    if not service_key:
+        return {"has_active_order": False, "order_id": None}
+    
+    active_statuses = [
+        "PENDING_REVIEW",
+        "AWAITING_USER_CONFIRM",
+        "TIME_CONFIRMED",
+        "PRICE_CONFIRMED",
+        "IN_PROGRESS",
+    ]
+    
+    row = await database.fetch_one(
+        requests.select().where(
+            (requests.c.user_id == user.id) &
+            (requests.c.status.in_(active_statuses))
+        )
+    )
+    
+    if row is None:
+        return {"has_active_order": False, "order_id": None}
+    
+    # Check if the order contains the service key
+    service_keys = row["service_keys"] or []
+    if service_key not in service_keys:
+        return {"has_active_order": False, "order_id": None}
+    
+    return {"has_active_order": True, "order_id": row["id"]}
+
+
+# ---------------------------------------------------------------------
 # Create
 # ---------------------------------------------------------------------
 @router.post(
