@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -245,7 +245,7 @@ async def cancel_order(
             .values(
                 status="CANCELLED",
                 cancel_reason=body.reason,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(),
             )
         )
         await database.execute(
@@ -296,4 +296,3 @@ async def submit_review(
         )
     )
     return Message(message="ok")
- 
