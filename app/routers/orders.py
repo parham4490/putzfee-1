@@ -54,7 +54,7 @@ async def check_active_order(
     
     row = await database.fetch_one(
         requests.select().where(
-            (requests.c.user_id == user.id) &
+            (requests.c.user_id == user['id']) &
             (requests.c.status.in_(active_statuses))
         )
     )
