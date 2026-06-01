@@ -7,6 +7,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from ..config import get_settings
 from ..database import (
     appointments,
     cars,
