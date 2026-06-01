@@ -54,12 +54,20 @@ async def create_order(
             detail=f"invalid service keys: {sorted(missing)}",
         )
     
+    # Parse datetime strings without timezone conversion
+    visit1_datetime = None
+    visit2_datetime = None
+    if body.visit1_datetime:
+        visit1_datetime = datetime.fromisoformat(body.visit1_datetime)
+    if body.visit2_datetime:
+        visit2_datetime = datetime.fromisoformat(body.visit2_datetime)
+    
     # Check for time conflicts with existing slots
     requested_times = []
-    if body.visit1_datetime:
-        requested_times.append(body.visit1_datetime)
-    if body.visit2_datetime:
-        requested_times.append(body.visit2_datetime)
+    if visit1_datetime:
+        requested_times.append(visit1_datetime)
+    if visit2_datetime:
+        requested_times.append(visit2_datetime)
     
     if requested_times:
         for requested_time in requested_times:
@@ -115,8 +123,8 @@ async def create_order(
             longitude=body.longitude,
             address_text=body.address_text,
             house_number=body.house_number,
-            visit1_datetime=body.visit1_datetime,
-            visit2_datetime=body.visit2_datetime,
+            visit1_datetime=visit1_datetime,
+            visit2_datetime=visit2_datetime,
             total_price=body.base_price,
             notes=body.notes,
             payment_type=body.payment_type,
@@ -125,21 +133,21 @@ async def create_order(
     )
     
     # Add requested times to schedule_slots to prevent conflicts
-    if body.visit1_datetime:
+    if visit1_datetime:
         await database.execute(
             schedule_slots.insert().values(
                 request_id=new_id,
-                start_at=body.visit1_datetime,
-                end_at=body.visit1_datetime + timedelta(hours=1),
+                start_at=visit1_datetime,
+                end_at=visit1_datetime + timedelta(hours=1),
                 status="REQUESTED",
             )
         )
-    if body.visit2_datetime:
+    if visit2_datetime:
         await database.execute(
             schedule_slots.insert().values(
                 request_id=new_id,
-                start_at=body.visit2_datetime,
-                end_at=body.visit2_datetime + timedelta(hours=1),
+                start_at=visit2_datetime,
+                end_at=visit2_datetime + timedelta(hours=1),
                 status="REQUESTED",
             )
         )
