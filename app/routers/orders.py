@@ -206,11 +206,35 @@ async def create_order(
         )
     
     row = await database.fetch_one(requests.select().where(requests.c.id == new_id))
+    
+    # Get user phone and service names for notification
+    user_row = await database.fetch_one(
+        users.select().where(users.c.id == row["user_id"])
+    )
+    service_keys = row["service_keys"] or []
+    service_names = []
+    if service_keys:
+        service_rows = await database.fetch_all(
+            services.select().where(services.c.key.in_(service_keys))
+        )
+        for s in service_rows:
+            name_i18n = s["name_i18n"] or {}
+            try:
+                default_name = s["name"]
+            except KeyError:
+                default_name = ""
+            service_name = name_i18n.get(locale, default_name)
+            if not service_name:
+                service_name = name_i18n.get("fa", default_name)
+            service_names.append(service_name)
+    
+    service_list = ", ".join(service_names) if service_names else "unknown"
+    phone = user_row["phone"] if user_row else "unknown"
 
     # Notify admins.
     await push_to_admins(
-        title=t("notify.new_order", locale),
-        body=f"#{int(row['id'])} – {', '.join(body.service_keys)}",
+        title=t("notify.new_order", locale, phone=phone, service=service_list),
+        body=f"#{int(row['id'])}",
         data={"type": "new_order", "request_id": int(row["id"])},
     )
     return RequestOut(**dict(row))
