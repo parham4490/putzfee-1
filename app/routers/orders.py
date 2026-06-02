@@ -16,6 +16,7 @@ from ..database import (
     reviews,
     schedule_slots,
     services,
+    users,
 )
 from ..deps import current_locale, current_user
 from ..i18n import Locale, t
@@ -317,6 +318,34 @@ async def cancel_order(
     row = await database.fetch_one(
         requests.select().where(requests.c.id == request_id)
     )
+    
+    # Get user phone and service names for notification
+    user_row = await database.fetch_one(
+        users.select().where(users.c.id == row["user_id"])
+    )
+    service_keys = row["service_keys"] or []
+    service_names = []
+    if service_keys:
+        service_rows = await database.fetch_all(
+            services.select().where(services.c.key.in_(service_keys))
+        )
+        for s in service_rows:
+            name_i18n = s["name_i18n"] or {}
+            service_name = name_i18n.get(locale.code, s.get("name", ""))
+            if not service_name:
+                service_name = name_i18n.get("fa", s.get("name", ""))
+            service_names.append(service_name)
+    
+    service_list = ", ".join(service_names) if service_names else "unknown"
+    phone = user_row["phone"] if user_row else "unknown"
+    
+    # Notify admins
+    await push_to_admins(
+        title=t("notify.order_cancelled", locale).format(phone=phone, service=service_list),
+        body=f"#{request_id}",
+        data={"type": "order_cancelled", "request_id": request_id},
+    )
+    
     return RequestOut(**dict(row))
 
 
