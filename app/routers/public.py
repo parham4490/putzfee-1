@@ -59,7 +59,7 @@ async def get_promotion_detail(promotion_id: int) -> Dict[str, Any]:
     if promo_row is None:
         raise HTTPException(status_code=404, detail="promotion not found")
     
-    applies_to_keys = promo_row.get("applies_to_keys") or []
+    applies_to_keys = promo_row["applies_to_keys"] if promo_row["applies_to_keys"] else []
     service_rows = []
     if applies_to_keys:
         service_rows = await database.fetch_all(
@@ -68,11 +68,11 @@ async def get_promotion_detail(promotion_id: int) -> Dict[str, Any]:
     
     # Calculate discounted prices
     services_with_discount = []
-    discount_percent = promo_row.get("discount_percent")
-    flat_discount = promo_row.get("flat_discount")
+    discount_percent = promo_row["discount_percent"]
+    flat_discount = promo_row["flat_discount"]
     
     for s in service_rows:
-        base_price = s.get("base_price")
+        base_price = s["base_price"]
         discounted_price = base_price
         
         if discount_percent is not None and base_price is not None:
