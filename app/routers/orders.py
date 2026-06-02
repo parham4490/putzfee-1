@@ -331,9 +331,13 @@ async def cancel_order(
         )
         for s in service_rows:
             name_i18n = s["name_i18n"] or {}
-            service_name = name_i18n.get(locale, s.get("name", ""))
+            try:
+                default_name = s["name"]
+            except KeyError:
+                default_name = ""
+            service_name = name_i18n.get(locale, default_name)
             if not service_name:
-                service_name = name_i18n.get("fa", s.get("name", ""))
+                service_name = name_i18n.get("fa", default_name)
             service_names.append(service_name)
     
     service_list = ", ".join(service_names) if service_names else "unknown"
