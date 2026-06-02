@@ -345,7 +345,7 @@ async def cancel_order(
     
     # Notify admins
     await push_to_admins(
-        title=t("notify.order_cancelled", locale).format(phone=phone, service=service_list),
+        title=t("notify.order_cancelled", locale, phone=phone, service=service_list),
         body=f"#{request_id}",
         data={"type": "order_cancelled", "request_id": request_id},
     )
@@ -392,4 +392,3 @@ async def submit_review(
         )
     )
     return Message(message="ok")
- 
