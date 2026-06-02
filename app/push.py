@@ -154,19 +154,37 @@ async def push_to_user(
     default so that it shows up in the in-app history.
     """
     data = data or {}
+    is_duplicate = False
     if persist:
-        await database.execute(
-            notifications.insert().values(
-                user_id=user_id, title=title, body=body, payload=data
+        # Check for duplicate notification in the last 5 minutes
+        from datetime import datetime, timedelta
+        five_minutes_ago = datetime.now() - timedelta(minutes=5)
+        existing = await database.fetch_one(
+            notifications.select().where(
+                (notifications.c.user_id == user_id) &
+                (notifications.c.title == title) &
+                (notifications.c.body == body) &
+                (notifications.c.created_at >= five_minutes_ago)
             )
         )
-    rows = await database.fetch_all(
-        device_tokens.select().where(device_tokens.c.user_id == user_id)
-    )
-    for r in rows:
-        ok = await _send_to_token(r["token"], title, body, data)
-        if not ok:
-            await _delete_dead_token(r["token"])
+        if existing is None:
+            await database.execute(
+                notifications.insert().values(
+                    user_id=user_id, title=title, body=body, payload=data
+                )
+            )
+        else:
+            is_duplicate = True
+    
+    # Only send FCM if not a duplicate
+    if not is_duplicate:
+        rows = await database.fetch_all(
+            device_tokens.select().where(device_tokens.c.user_id == user_id)
+        )
+        for r in rows:
+            ok = await _send_to_token(r["token"], title, body, data)
+            if not ok:
+                await _delete_dead_token(r["token"])
 
 
 async def push_to_admins(
