@@ -133,6 +133,7 @@ async def create_order(
 ) -> RequestOut:
     # If promotion_id is provided, get service keys from promotion
     service_keys_to_use = body.service_keys
+    promo_row = None
     if body.promotion_id is not None and not body.service_keys:
         promo_row = await database.fetch_one(
             promotions.select().where(promotions.c.id == body.promotion_id)
@@ -186,6 +187,28 @@ async def create_order(
                 detail="car not owned by user",
             )
 
+    # Calculate total price from promotion if provided
+    total_price_to_save = body.base_price
+    if promo_row is not None and body.base_price is None:
+        # Get service rows to calculate base price
+        service_rows = await database.fetch_all(
+            services.select().where(services.c.key.in_(service_keys_to_use))
+        )
+        base_total = sum(float(s["base_price"] or 0) for s in service_rows)
+        
+        # Apply discount
+        discount_percent = promo_row["discount_percent"]
+        flat_discount = promo_row["flat_discount"]
+        
+        if discount_percent is not None:
+            total_price_to_save = base_total * (1 - float(discount_percent) / 100)
+        elif flat_discount is not None:
+            total_price_to_save = base_total - float(flat_discount)
+            if total_price_to_save < 0:
+                total_price_to_save = 0
+        else:
+            total_price_to_save = base_total
+
     new_id = await database.execute(
         requests.insert().values(
             user_id=user["id"],
@@ -198,7 +221,7 @@ async def create_order(
             house_number=body.house_number,
             visit1_datetime=visit1_datetime,
             visit2_datetime=visit2_datetime,
-            total_price=body.base_price,
+            total_price=total_price_to_save,
             notes=body.notes,
             payment_type=body.payment_type,
             promotion_id=body.promotion_id,
