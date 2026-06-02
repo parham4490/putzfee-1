@@ -331,7 +331,7 @@ async def cancel_order(
         )
         for s in service_rows:
             name_i18n = s["name_i18n"] or {}
-            service_name = name_i18n.get(locale.code, s.get("name", ""))
+            service_name = name_i18n.get(locale, s.get("name", ""))
             if not service_name:
                 service_name = name_i18n.get("fa", s.get("name", ""))
             service_names.append(service_name)
