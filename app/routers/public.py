@@ -10,7 +10,7 @@ import asyncio
 import time
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 
 from ..database import database, promotions, reviews, services, users
 from ..deps import rate_limit
@@ -48,6 +48,59 @@ async def home_payload() -> Dict[str, Any]:
         _home_cache["data"] = data
         _home_cache["expires_at"] = now + 60.0
         return data
+
+
+@router.get("/promotions/{promotion_id}")
+async def get_promotion_detail(promotion_id: int) -> Dict[str, Any]:
+    """Return promotion detail with services and discounted prices."""
+    promo_row = await database.fetch_one(
+        promotions.select().where(promotions.c.id == promotion_id)
+    )
+    if promo_row is None:
+        raise HTTPException(status_code=404, detail="promotion not found")
+    
+    applies_to_keys = promo_row.get("applies_to_keys") or []
+    service_rows = []
+    if applies_to_keys:
+        service_rows = await database.fetch_all(
+            services.select().where(services.c.key.in_(applies_to_keys))
+        )
+    
+    # Calculate discounted prices
+    services_with_discount = []
+    discount_percent = promo_row.get("discount_percent")
+    flat_discount = promo_row.get("flat_discount")
+    
+    for s in service_rows:
+        base_price = s.get("base_price")
+        discounted_price = base_price
+        
+        if discount_percent is not None and base_price is not None:
+            discounted_price = float(base_price) * (1 - float(discount_percent) / 100)
+        elif flat_discount is not None and base_price is not None:
+            discounted_price = float(base_price) - float(flat_discount)
+            if discounted_price < 0:
+                discounted_price = 0
+        
+        services_with_discount.append({
+            **dict(s),
+            "discounted_price": discounted_price,
+        })
+    
+    return {
+        "id": promo_row["id"],
+        "key": promo_row["key"],
+        "title_i18n": promo_row["title_i18n"],
+        "description_i18n": promo_row["description_i18n"],
+        "image_url": promo_row["image_url"],
+        "discount_percent": promo_row["discount_percent"],
+        "flat_discount": promo_row["flat_discount"],
+        "min_services": promo_row["min_services"],
+        "applies_to_keys": promo_row["applies_to_keys"],
+        "valid_from": promo_row["valid_from"],
+        "valid_to": promo_row["valid_to"],
+        "services": services_with_discount,
+    }
 
 
 @router.get(
