@@ -175,7 +175,7 @@ class PromotionOut(PromotionIn):
 # Orders / Requests
 # ---------------------------------------------------------------------
 class RequestCreateIn(BaseModel):
-    service_keys: List[str] = Field(min_length=1)
+    service_keys: List[str] = Field(default_factory=list)
     car_id: Optional[int] = None
     latitude: Optional[Decimal] = None
     longitude: Optional[Decimal] = None
