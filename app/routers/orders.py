@@ -130,12 +130,31 @@ async def create_order(
     user=Depends(current_user),
     locale: Locale = Depends(current_locale),
 ) -> RequestOut:
+    # If promotion_id is provided, get service keys from promotion
+    service_keys_to_use = body.service_keys
+    if body.promotion_id is not None and not body.service_keys:
+        promo_row = await database.fetch_one(
+            promotions.select().where(promotions.c.id == body.promotion_id)
+        )
+        if promo_row is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="promotion not found",
+            )
+        applies_to_keys = promo_row.get("applies_to_keys") or []
+        if not applies_to_keys:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="promotion has no services",
+            )
+        service_keys_to_use = applies_to_keys
+    
     # Validate service keys
     valid_rows = await database.fetch_all(
-        services.select().where(services.c.key.in_(body.service_keys))
+        services.select().where(services.c.key.in_(service_keys_to_use))
     )
     valid_keys = {r["key"] for r in valid_rows if r["is_active"]}
-    missing = set(body.service_keys) - valid_keys
+    missing = set(service_keys_to_use) - valid_keys
     if missing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -170,7 +189,7 @@ async def create_order(
         requests.insert().values(
             user_id=user["id"],
             status="PENDING_REVIEW",
-            service_keys=list(body.service_keys),
+            service_keys=list(service_keys_to_use),
             car_id=body.car_id,
             latitude=body.latitude,
             longitude=body.longitude,
