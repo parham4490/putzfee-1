@@ -12,6 +12,7 @@ from ..database import (
     appointments,
     cars,
     database,
+    promotions,
     requests,
     reviews,
     schedule_slots,
