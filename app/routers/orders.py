@@ -142,7 +142,7 @@ async def create_order(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="promotion not found",
             )
-        applies_to_keys = promo_row.get("applies_to_keys") or []
+        applies_to_keys = promo_row["applies_to_keys"] if promo_row["applies_to_keys"] else []
         if not applies_to_keys:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
