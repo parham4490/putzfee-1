@@ -135,9 +135,14 @@ _MESSAGES: Dict[str, Dict[Locale, str]] = {
 
     # Notifications
     "notify.new_order": {
-        "fa": "یک سفارش جدید ثبت شد.",
-        "en": "A new order has been created.",
-        "de": "Eine neue Bestellung wurde erstellt.",
+        "fa": "سفارش جدید از کاربر {phone}: {service}",
+        "en": "New order from user {phone}: {service}",
+        "de": "Neue Bestellung von Benutzer {phone}: {service}",
+    },
+    "notify.order_cancelled": {
+        "fa": "کاربر {phone} درخواست {service} را کنسل کرد.",
+        "en": "User {phone} cancelled request {service}.",
+        "de": "Benutzer {phone} hat Anfrage {service} storniert.",
     },
     "notify.times_proposed": {
         "fa": "زمان‌های پیشنهادی",
