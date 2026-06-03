@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 
 from ..database import (
     appointments,
+    cars,
     database,
     notifications,
     promotions,
@@ -23,6 +24,7 @@ from ..i18n import Locale, t
 from ..media import absolute_url, save_image
 from ..push import push_to_user
 from ..schemas import (
+    CarOut,
     Message,
     Page,
     PromotionIn,
@@ -425,6 +427,17 @@ async def admin_cancel(
         requests.select().where(requests.c.id == request_id)
     )
     return RequestOut(**dict(row))
+
+
+# ---------------------------------------------------------------------
+# Cars management (read-only for admin)
+# ---------------------------------------------------------------------
+@router.get("/cars/{car_id}", response_model=CarOut)
+async def get_car(car_id: int) -> CarOut:
+    row = await database.fetch_one(cars.select().where(cars.c.id == car_id))
+    if row is None:
+        raise HTTPException(status_code=404, detail="car not found")
+    return CarOut(**dict(row))
 
 
 # ---------------------------------------------------------------------
