@@ -177,6 +177,7 @@ class PromotionOut(PromotionIn):
 class RequestCreateIn(BaseModel):
     service_keys: List[str] = Field(default_factory=list)
     car_id: Optional[int] = None
+    car_services: Optional[Dict[str, bool]] = None
     latitude: Optional[Decimal] = None
     longitude: Optional[Decimal] = None
     address_text: Optional[str] = Field(default=None, max_length=500)
@@ -203,6 +204,7 @@ class RequestOut(BaseModel):
     status: str
     service_keys: List[str]
     car_id: Optional[int] = None
+    car_services: Optional[Dict[str, bool]] = None
     latitude: Optional[Decimal] = None
     longitude: Optional[Decimal] = None
     address_text: Optional[str] = None
