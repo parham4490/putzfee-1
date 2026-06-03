@@ -184,6 +184,7 @@ requests = sa.Table(
         sa.ForeignKey("cars.id", ondelete="SET NULL"),
         nullable=True,
     ),
+    sa.Column("car_services", pg.JSONB, nullable=True),
     sa.Column("latitude", sa.Numeric(10, 7), nullable=True),
     sa.Column("longitude", sa.Numeric(10, 7), nullable=True),
     sa.Column("address_text", sa.String(500), nullable=True),
