@@ -201,6 +201,7 @@ async def create_order(
             status="PENDING_REVIEW",
             service_keys=list(service_keys_to_use),
             car_id=body.car_id,
+            car_services=body.car_services,
             latitude=body.latitude,
             longitude=body.longitude,
             address_text=body.address_text,
