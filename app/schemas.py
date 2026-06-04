@@ -198,7 +198,7 @@ class RequestCreateIn(BaseModel):
 
 
 class RequestOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra='allow')
     id: int
     user_id: int
     status: str
@@ -221,6 +221,7 @@ class RequestOut(BaseModel):
     finished_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    user_phone: Optional[str] = None
 
 
 class CancelIn(BaseModel):
