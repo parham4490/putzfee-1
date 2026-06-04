@@ -275,7 +275,17 @@ async def order_detail(request_id: int) -> RequestOut:
     )
     if row is None:
         raise HTTPException(status_code=404, detail="order not found")
-    return RequestOut(**dict(row))
+    
+    # Get user phone
+    user_row = await database.fetch_one(
+        users.select().where(users.c.id == row["user_id"])
+    )
+    user_phone = user_row["phone"] if user_row else None
+    
+    print(f"DEBUG: user_row: {user_row}")
+    print(f"DEBUG: user_phone: {user_phone}")
+    
+    return RequestOut(**dict(row), user_phone=user_phone)
 
 
 # ---------------------------------------------------------------------
