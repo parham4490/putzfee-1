@@ -282,15 +282,9 @@ async def order_detail(request_id: int) -> RequestOut:
     )
     user_phone = user_row["phone"] if user_row else None
     
-    print(f"DEBUG: user_row: {user_row}")
-    print(f"DEBUG: user_phone: {user_phone}")
-    
     # Create result dict with user_phone
     result = dict(row)
     result['user_phone'] = user_phone
-    
-    print(f"DEBUG: result dict keys: {result.keys()}")
-    print(f"DEBUG: result dict: {result}")
     
     return RequestOut(**result)
 
