@@ -98,6 +98,23 @@ _MESSAGES: Dict[str, Dict[Locale, str]] = {
         "en": "Order cancelled.",
         "de": "Bestellung storniert.",
     },
+    "order.visit_time": {
+        "fa": "زمان بازدید",
+        "en": "Visit time",
+        "de": "Besuchszeit",
+    },
+
+    # Common
+    "common.confirmed": {
+        "fa": "تأیید شد",
+        "en": "confirmed",
+        "de": "bestätigt",
+    },
+    "common.not_confirmed": {
+        "fa": "تأیید نشد",
+        "en": "not confirmed",
+        "de": "nicht bestätigt",
+    },
 
     # Scheduling
     "slot.unavailable": {
@@ -168,6 +185,11 @@ _MESSAGES: Dict[str, Dict[Locale, str]] = {
         "fa": "کار پایان یافت",
         "en": "Work finished",
         "de": "Arbeit beendet",
+    },
+    "notify.time_rejected": {
+        "fa": "زمان تایید نشد",
+        "en": "Time not confirmed",
+        "de": "Termin nicht bestätigt",
     },
 }
 
