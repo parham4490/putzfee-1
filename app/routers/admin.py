@@ -270,29 +270,16 @@ async def list_history(
 
 @router.get("/orders/{request_id}", response_model=RequestOut)
 async def order_detail(request_id: int) -> RequestOut:
-    row = await database.fetch_one(
-        requests.select().where(requests.c.id == request_id)
+    query = (
+        sa.select(requests, users.c.phone.label("user_phone"))
+        .select_from(requests.join(users, requests.c.user_id == users.c.id))
+        .where(requests.c.id == request_id)
     )
+    row = await database.fetch_one(query)
     if row is None:
         raise HTTPException(status_code=404, detail="order not found")
     
-    # Get user phone
-    user_row = await database.fetch_one(
-        users.select().where(users.c.id == row["user_id"])
-    )
-    user_phone = user_row["phone"] if user_row else None
-    
-    print(f"DEBUG: user_row: {user_row}")
-    print(f"DEBUG: user_phone: {user_phone}")
-    
-    # Create result dict with user_phone
-    result = dict(row)
-    result['user_phone'] = user_phone
-    
-    print(f"DEBUG: result dict keys: {result.keys()}")
-    print(f"DEBUG: result dict: {result}")
-    
-    return RequestOut(**result)
+    return RequestOut(**dict(row))
 
 
 # ---------------------------------------------------------------------
@@ -399,6 +386,108 @@ async def finish_order(
         body=t("order.finished", locale),
         data={"type": "work_finished", "request_id": int(request_id)},
     )
+    row = await database.fetch_one(
+        requests.select().where(requests.c.id == request_id)
+    )
+    return RequestOut(**dict(row))
+
+
+@router.post("/orders/{request_id}/slots/{slot_id}/approve", response_model=RequestOut)
+async def admin_approve_slot(
+    request_id: int,
+    slot_id: int,
+    locale: Locale = Depends(current_locale),
+) -> RequestOut:
+    row = await database.fetch_one(
+        requests.select().where(requests.c.id == request_id)
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="order not found")
+    if row["status"] != "AWAITING_USER_CONFIRM":
+        raise HTTPException(
+            status_code=400, detail=t("order.invalid_status", locale)
+        )
+    
+    slot = await database.fetch_one(
+        schedule_slots.select().where(schedule_slots.c.id == slot_id)
+    )
+    if slot is None or slot["request_id"] != request_id or slot["status"] != "PROPOSED":
+        raise HTTPException(status_code=400, detail="slot not found or not proposed")
+    
+    async with database.transaction():
+        await database.execute(
+            schedule_slots.update()
+            .where(schedule_slots.c.id == slot_id)
+            .values(status="CONFIRMED")
+        )
+        await database.execute(
+            schedule_slots.update()
+            .where(schedule_slots.c.request_id == request_id)
+            .where(schedule_slots.c.id != slot_id)
+            .values(status="REJECTED")
+        )
+        await database.execute(
+            requests.update()
+            .where(requests.c.id == request_id)
+            .values(
+                status="TIME_CONFIRMED",
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+    
+    service_key = row.get("service_keys", [])[0] if row.get("service_keys") else ""
+    await push_to_user(
+        int(row["user_id"]),
+        title=t("notify.time_confirmed", locale),
+        body=f"{t('order.visit_time', locale)} + {service_key} + {t('common.confirmed', locale)}",
+        data={"type": "time_confirmed", "request_id": int(request_id)},
+    )
+    
+    row = await database.fetch_one(
+        requests.select().where(requests.c.id == request_id)
+    )
+    return RequestOut(**dict(row))
+
+
+@router.post("/orders/{request_id}/slots/reject", response_model=RequestOut)
+async def admin_reject_slots(
+    request_id: int,
+    locale: Locale = Depends(current_locale),
+) -> RequestOut:
+    row = await database.fetch_one(
+        requests.select().where(requests.c.id == request_id)
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="order not found")
+    if row["status"] != "AWAITING_USER_CONFIRM":
+        raise HTTPException(
+            status_code=400, detail=t("order.invalid_status", locale)
+        )
+    
+    async with database.transaction():
+        await database.execute(
+            schedule_slots.update()
+            .where(schedule_slots.c.request_id == request_id)
+            .values(status="REJECTED")
+        )
+        await database.execute(
+            requests.update()
+            .where(requests.c.id == request_id)
+            .values(
+                status="CANCELLED",
+                cancel_reason="time_rejected",
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+    
+    service_key = row.get("service_keys", [])[0] if row.get("service_keys") else ""
+    await push_to_user(
+        int(row["user_id"]),
+        title=t("notify.time_rejected", locale),
+        body=f"{t('order.visit_time', locale)} + {service_key} + {t('common.not_confirmed', locale)}",
+        data={"type": "time_rejected", "request_id": int(request_id)},
+    )
+    
     row = await database.fetch_one(
         requests.select().where(requests.c.id == request_id)
     )
